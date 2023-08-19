@@ -1,0 +1,121 @@
+Container Network Interface (CNI) plugins for cluster networking.
+SRC:
+https://www.cni.dev/
+https://www.tigera.io/learn/guides/kubernetes-networking/kubernetes-cni/
+
+CNI [Container Network Interface]
+CNI is a cloud Native Computing foundation project
+
+CNI is responsible for network connectivity of containers and removing allocated resources when the container is deleted.
+
+When used with Kubernetes, CNI can integrate smoothly with the kubelet to enable the use of an overlay or underlay network to automatically configure the network between pods.
+
+Now let me show the kubernete-cni package on the node itself
+
+I have a node on Ubuntu 20.04.6
+
+command to list the package....
+apt list --installed | grep cni
+
+
+
+WARNING: apt does not have a stable CLI interface. Use with caution in scripts.
+
+kubernetes-cni/kubernetes-xenial,now 1.2.0-00 amd64 [installed,automatic]
+
+command to list all the files from the package....
+dpkg -L kubernetes-cni
+
+/.
+/opt
+/opt/cni
+/opt/cni/bin
+/opt/cni/bin/bandwidth
+/opt/cni/bin/bridge
+/opt/cni/bin/dhcp
+/opt/cni/bin/dummy
+/opt/cni/bin/firewall
+/opt/cni/bin/host-device
+/opt/cni/bin/host-local
+/opt/cni/bin/ipvlan
+/opt/cni/bin/loopback
+/opt/cni/bin/macvlan
+/opt/cni/bin/portmap
+/opt/cni/bin/ptp
+/opt/cni/bin/sbr
+/opt/cni/bin/static
+/opt/cni/bin/tuning
+/opt/cni/bin/vlan
+/opt/cni/bin/vrf
+
+You can see all the binaries / plugins..
+
+if you are intrested about the plugins, please take a look at https://www.cni.dev/plugins/current/main/
+
+I have kubernetes running on CentOS 7.9
+
+RPM commands
+
+[vagrant@k8s-master plugins]$ cat /etc/redhat-release
+CentOS Linux release 7.9.2009 (Core)
+
+
+[vagrant@k8s-master plugins]$ rpm -qa | grep -i cni
+kubernetes-cni-1.2.0-0.x86_64
+[vagrant@k8s-master]$
+
+
+You can get the information about the package using
+rpm -qi kubernetes-cni-1.2.0-0
+
+See the Description of the package
+
+
+[vagrant@k8s-master plugins]$ rpm -qi kubernetes-cni-1.2.0-0
+Name : kubernetes-cni
+Version : 1.2.0
+Release : 0
+Architecture: x86_64
+Install Date: Thu Aug 17 20:28:11 2023
+Group : Unspecified
+Size : 50989560
+License : ASL 2.0
+Signature : RSA/SHA512, Wed Jan 18 22:08:02 2023, Key ID f09c394c3e1ba8d5
+Source RPM : kubelet-1.26.1-0.src.rpm
+Build Date : Wed Jan 18 21:09:18 2023
+Build Host : c507901048c3
+Relocations : (not relocatable)
+URL : https://kubernetes.io
+Summary : Binaries required to provision kubernetes container networking
+Description :
+Binaries required to provision container networking.
+[vagrant@k8s-master]$
+
+
+
+You can list the files of the package
+rpm -ql kubernetes-cni-1.2.0-0
+
+
+
+[vagrant@k8s-master ~]$ rpm -ql kubernetes-cni-1.2.0-0
+/opt/cni
+/opt/cni/bin
+/opt/cni/bin/bandwidth
+/opt/cni/bin/bridge
+/opt/cni/bin/dhcp
+/opt/cni/bin/dummy
+/opt/cni/bin/firewall
+/opt/cni/bin/host-device
+/opt/cni/bin/host-local
+/opt/cni/bin/ipvlan
+/opt/cni/bin/loopback
+/opt/cni/bin/macvlan
+/opt/cni/bin/portmap
+/opt/cni/bin/ptp
+/opt/cni/bin/sbr
+/opt/cni/bin/static
+/opt/cni/bin/tuning
+/opt/cni/bin/vlan
+/opt/cni/bin/vrf
+[vagrant@k8s-master ~]$
