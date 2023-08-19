@@ -1,0 +1,220 @@
+This video is related to overlay networks.
+
+I just wanted to understand the overlay network and did some research.
+
+I will use the docker swarm to demonstrate the overlay network.
+
+If you see any mistakes, please post them in the comment section.
+
+
+
+src: https://docs.docker.com/engine/swarm/networking/
+
+An overlay network is a network that is built on top of another network and is supported by its infrastructure.
+
+
+
+sudo yum install -y yum-utils
+sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+sudo yum install docker-ce dock
+
+sudo yum install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+sudo systemctl start docker
+
+sudo systemctl status docker
+
+
+[ Create a swarm ]
+
+sudo docker swarm init --advertise-addr 192.168.33.10 --listen-addr 0.0.0.0
+
+[vagrant@docker-manager ~]$ sudo docker swarm init --advertise-addr 192.168.33.10 --listen-addr 0.0.0.0
+Swarm initialized: current node (gsgudkzurc8t3ub5l51ckin4l) is now a manager.
+
+To add a worker to this swarm, run the following command:
+
+docker swarm join --token SWMTKN-1-3td3sv7hm8xmjcd3kxsbpoju4vhs7nxzv79qwx3z43ne4usf1h-c8x19d535nd5yu2d8z4kkde09 192.168.33.10:2377
+
+To add a manager to this swarm, run 'docker swarm join-token manager' and follow the instructions.
+
+[vagrant@docker-manager ~]$
+
+
+
+
+
+sudo docker node ls
+ID HOSTNAME STATUS AVAILABILITY MANAGER STATUS ENGINE VERSION
+njf6w2vns0ddqiz8i5ilorblf * docker-manager Ready Active Leader 24.0.5
+
+
+
+sudo yum install epel-release -y
+
+sudo yum install jq -y
+
+
+Lets use swarm to understand overlay network.
+
+3 network concepts are important to swarm services:
+
+1] Overlay networks manage communications among the Docker daemons participating in the swarm.
+You can create overlay networks, in the same way as user-defined networks for standalone containers.
+You can attach a service to one or more existing overlay networks as well, to enable service-to-service communication. Overlay networks are Docker networks that use the overlay network driver.
+
+[vagrant@docker-manager ~]$ sudo docker network list
+NETWORK ID NAME DRIVER SCOPE
+6e847711cbbd bridge bridge local
+2258f408295d docker_gwbridge bridge local
+afc828da01c4 host host local
+7fu2flvy1no1 ingress overlay swarm
+b3036c35b5a2 none null local
+[vagrant@docker-manager ~]$
+
+You can see here ingress uses Overlay network Driver
+2] The ingress network is a special overlay network that facilitates load balancing among a service’s nodes.
+When any swarm node receives a request on a published port, it hands that request off to a module called IPVS.
+IPVS keeps track of all the IP addresses participating in that service, selects one of them, and routes the request to it, over the ingress network.
+
+
+
+
+3] The docker_gwbridge is a bridge network that connects the overlay networks (including the ingress network) to an individual Docker daemon’s physical network.
+By default, each container a service is running is connected to its local Docker daemon host’s docker_gwbridge network.
+
+
+
+[vagrant@docker-manager ~]$ docker network create \
+> --driver overlay \
+> my-network
+388ykafjxa54p53j0em17wva6
+[vagrant@docker-manager ~]$ docker network create --driver overlay my-network
+Error response from daemon: network with name my-network already exists
+[vagrant@docker-manager ~]$ sudo docker network list
+NETWORK ID NAME DRIVER SCOPE
+2c7a0771f9d6 bridge bridge local
+2258f408295d docker_gwbridge bridge local
+afc828da01c4 host host local
+7fu2flvy1no1 ingress overlay swarm
+388ykafjxa54 my-network overlay swarm
+b3036c35b5a2 none null local
+[vagrant@docker-manager ~]$ docker network inspect my-network
+[
+{
+"Name": "my-network",
+"Id": "388ykafjxa54p53j0em17wva6",
+"Created": "2023-08-19T12:54:38.269719978Z",
+"Scope": "swarm",
+"Driver": "overlay",
+"EnableIPv6": false,
+"IPAM": {
+"Driver": "default",
+"Options": null,
+"Config": [
+{
+"Subnet": "10.0.1.0/24",
+"Gateway": "10.0.1.1"
+}
+]
+},
+"Internal": false,
+"Attachable": false,
+"Ingress": false,
+"ConfigFrom": {
+"Network": ""
+},
+"ConfigOnly": false,
+"Containers": null,
+"Options": {
+"com.docker.network.driver.overlay.vxlanid_list": "4097"
+},
+"Labels": null
+}
+]
+[vagrant@docker-manager ~]$ docker service create \
+> --replicas 3 \
+> --name my-web \
+> --network my-network \
+> nginx
+qc7d93kglg52feux4wgcmze6y
+overall progress: 3 out of 3 tasks
+1/3: running [==================================================>]
+2/3: running [==================================================>]
+3/3: running [==================================================>]
+verify: Service converged
+[vagrant@docker-manager ~]$ sudo docker ps -s
+CONTAINER ID IMAGE COMMAND CREATED STATUS PORTS NAMES SIZE
+db9a9cf78f36 nginx:latest "/docker-entrypoint.…" 12 seconds ago Up 10 seconds 80/tcp my-web.1.bjni9dc5c8l7vjj2cz02569rr 1.09kB (virtual 187MB)
+24ee6cd8c170 nginx:latest "/docker-entrypoint.…" 12 seconds ago Up 10 seconds 80/tcp my-web.2.kkjqoqlp63i88k0i2sg38ocp6 1.09kB (virtual 187MB)
+82d7ae0445a3 nginx:latest "/docker-entrypoint.…" 12 seconds ago Up 10 seconds 80/tcp my-web.3.jk7l6ok7cmrhn0o1k1yo063aj 1.09kB (virtual 187MB)
+[vagrant@docker-manager ~]$ docker network inspect my-network
+[
+{
+"Name": "my-network",
+"Id": "388ykafjxa54p53j0em17wva6",
+"Created": "2023-08-19T12:55:51.279684118Z",
+"Scope": "swarm",
+"Driver": "overlay",
+"EnableIPv6": false,
+"IPAM": {
+"Driver": "default",
+"Options": null,
+"Config": [
+{
+"Subnet": "10.0.1.0/24",
+"Gateway": "10.0.1.1"
+}
+]
+},
+"Internal": false,
+"Attachable": false,
+"Ingress": false,
+"ConfigFrom": {
+"Network": ""
+},
+"ConfigOnly": false,
+"Containers": {
+"24ee6cd8c170e629b69bf2bb20c84eea764a632b5dad0c74fbd4f5cbe0d232bb": {
+"Name": "my-web.2.kkjqoqlp63i88k0i2sg38ocp6",
+"EndpointID": "ca7030c30ff92b1bbe5ef0a0a60101e04ba82d8cc587b0c76a9375c97a4be887",
+"MacAddress": "02:42:0a:00:01:05",
+"IPv4Address": "10.0.1.5/24",
+"IPv6Address": ""
+},
+"82d7ae0445a3e05d9f3579056a843d680403d07c45da5ef2364382a58c0cae74": {
+"Name": "my-web.3.jk7l6ok7cmrhn0o1k1yo063aj",
+"EndpointID": "ee036e6735e8841a7097c43f3fd495f9f6c19ad1c889dd639fe7c4b3147a1f7b",
+"MacAddress": "02:42:0a:00:01:03",
+"IPv4Address": "10.0.1.3/24",
+"IPv6Address": ""
+},
+"db9a9cf78f369d6c76e3d04da0550e139bcd80efd5935be602aa6f8a47a7b8b0": {
+"Name": "my-web.1.bjni9dc5c8l7vjj2cz02569rr",
+"EndpointID": "8371867b157b67aa177e8bf5bdbdb27a27d510342d8088fce7c467893ef75326",
+"MacAddress": "02:42:0a:00:01:04",
+"IPv4Address": "10.0.1.4/24",
+"IPv6Address": ""
+},
+"lb-my-network": {
+"Name": "my-network-endpoint",
+"EndpointID": "d26052ec78292354b96023a21813089f350d5aaccd08a4736c6eea3acaaba81d",
+"MacAddress": "02:42:0a:00:01:06",
+"IPv4Address": "10.0.1.6/24",
+"IPv6Address": ""
+}
+},
+"Options": {
+"com.docker.network.driver.overlay.vxlanid_list": "4097"
+},
+"Labels": {},
+"Peers": [
+{
+"Name": "c8416eafd66b",
+"IP": "192.168.33.10"
+}
+]
+}
+]
+[vagrant@docker-manager ~]$
